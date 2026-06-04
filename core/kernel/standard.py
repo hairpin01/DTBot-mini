@@ -1,11 +1,11 @@
 
-import os
 import logging
 
-from mcstatus import JavaServer 
 from aiogram import Bot, Dispatcher, Router
 
 from core.lib.cache import TTLCache
+from core.lib.config import Config 
+from core.handlers import start, status, players
 
 class Kernel:
     """
@@ -13,14 +13,15 @@ class Kernel:
     """
 
     def __init__(self) -> None:
-        self.cache: TTLCache = TTLCache(max_size=10, ttl=60)
-        self.BOT_TOKEN: str = os.environ.get("BOT_TOKEN") 
-        self.router: Router = Router()
         self.logger: logging.Logger | None = None
+        self.cache: TTLCache = TTLCache(max_size=10, ttl=60)
+        self.config: Config = Config()
+        self.BOT_TOKEN: str | None = self.config.get("BOT_TOKEN")   
+        self.router: Router = Router()
         self.client: Bot | None = None
         self.dp: Dispatcher | None = None
    
-    async def init_logger(self):
+    def _init_logger(self):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         handler = logging.StreamHandler()
@@ -28,25 +29,29 @@ class Kernel:
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-    async def init_client(self) -> str | None:
+    def _init_client(self) -> str | None:
         if self.BOT_TOKEN is None:
             self.logger.error("BOT_TOKEN is not set")
             return None
 
         self.client = Bot(token=self.BOT_TOKEN)
-        self.dp = Dispatcher(self.client)
-        self.dp.include_router(self.router)
+        self.dp = Dispatcher()
         
-        await dp.start_polling()
+        # Include the router command
+        self.dp.include_routers(start.router, status.router, players.router, self.router)
+        
 
     async def run(self):
         
+        self._init_logger()
+
         try:
-            await self.init_logger()
-            await self.init_client()
+            self._init_client()
         except Exception as e:
             self.logger.error(e)
             return None
-
+        
+        self.logger.info("Bot started")
+        await self.dp.start_polling(self.client)
 
 
