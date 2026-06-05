@@ -41,11 +41,18 @@ async def cmd_players(message: Message) -> None:
     )
 
     if not sample:
-        await message.answer(
-            f"{_E_EMPTY} <b>No players online</b> "
-            f"(<code>{online}/{maximum}</code>)",
-            parse_mode="HTML",
-        )
+        if online > 0:
+            msg = (
+                f"{_E_HEAD} <b>Players online</b>\n"
+                f"{_E_COUNT} Total: <code>{online}/{maximum}</code>\n"
+                f"<blockquote>Nicknames hidden (server proxy)</blockquote>"
+            )
+        else:
+            msg = (
+                f"{_E_EMPTY} <b>No players online</b> "
+                f"(<code>{online}/{maximum}</code>)"
+            )
+        await message.answer(msg, parse_mode="HTML")
         return
 
     rows = "\n".join(f"{_E_ROW} <code>{html.escape(p.name)}</code>" for p in sample)
