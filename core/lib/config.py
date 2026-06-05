@@ -11,7 +11,8 @@ class Config:
 
     def __init__(self) -> None:
         env_path = Path(".env")
-        loaded = load_dotenv(dotenv_path=env_path, verbose=False)
+        # override=True: .env file wins over pre-existing env vars (e.g. Pterodactyl panel defaults)
+        loaded = load_dotenv(dotenv_path=env_path, verbose=False, override=True)
         if loaded:
             log.info("Loaded environment from %s", env_path.resolve())
         else:

@@ -32,14 +32,7 @@ class Kernel:
 
     def _init_logger(self) -> None:
         self.logger = log
-        # Avoid duplicate handlers: only configure if this is the root call
-        if not log.handlers:
-            log.setLevel(logging.INFO)
-            handler = logging.StreamHandler()
-            handler.setFormatter(
-                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            )
-            log.addHandler(handler)
+        # basicConfig is already called in __main__.py — no extra handlers needed
 
     def _init_client(self) -> str | None:
         if self.BOT_TOKEN is None:
