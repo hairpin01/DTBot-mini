@@ -13,6 +13,9 @@ from core.handlers import (
     notify,
 )
 
+log = logging.getLogger(__name__)
+
+
 class Kernel:
     """
     Kernel class for the DTBot.
@@ -27,43 +30,58 @@ class Kernel:
         self.client: Bot | None = None
         self.dp: Dispatcher | None = None
 
-    def _init_logger(self):
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+    def _init_logger(self) -> None:
+        self.logger = log
+        # Avoid duplicate handlers: only configure if this is the root call
+        if not log.handlers:
+            log.setLevel(logging.INFO)
+            handler = logging.StreamHandler()
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            )
+            log.addHandler(handler)
 
     def _init_client(self) -> str | None:
         if self.BOT_TOKEN is None:
-            self.logger.error("BOT_TOKEN is not set")
+            self.logger.error("BOT_TOKEN is not set — cannot start bot")
             return None
+
+        token_preview = self.BOT_TOKEN[:6] + "..." if len(self.BOT_TOKEN) > 6 else "?"
+        self.logger.info("Initialising bot (token=%s)", token_preview)
 
         self.client = Bot(token=self.BOT_TOKEN)
         self.dp = Dispatcher()
 
-        # Include the router command
-        self.dp.include_routers(
-            start.router,
-            status.router,
-            players.router,
-            notify.router,
-            self.router
-        )
+        routers = [start.router, status.router, players.router, notify.router, self.router]
+        for r in routers:
+            self.logger.debug("Including router: %s", r)
+        self.dp.include_routers(*routers)
+        self.logger.info("Registered %d routers", len(routers))
 
+        return self.BOT_TOKEN
 
-    async def run(self):
-
+    async def run(self) -> None:
         self._init_logger()
+        log.info("Kernel boot sequence started")
 
         try:
             self._init_client()
         except Exception as e:
-            self.logger.error(e)
-            return None
+            log.exception("Client initialisation failed")
+            return
 
-        notify.init_notifier(self.client, self.config)
+        notifier = notify.init_notifier(self.client, self.config)
+        if notifier and notifier.enabled:
+            log.info(
+                "Notifier enabled (chat=%s, interval=%ds)",
+                notifier.chat_id,
+                notifier.interval,
+            )
+        else:
+            log.info("Notifier disabled")
 
-        self.logger.info("Bot started")
-        await self.dp.start_polling(self.client)
+        log.info("Bot started — entering polling loop")
+        try:
+            await self.dp.start_polling(self.client)
+        finally:
+            log.info("Bot polling stopped")

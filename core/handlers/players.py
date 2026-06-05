@@ -1,10 +1,13 @@
 import html
+import logging
 
+from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
-from aiogram import Router
 
 from core.lib.status import ServerStatus
+
+log = logging.getLogger(__name__)
 
 router = Router()
 
@@ -15,17 +18,27 @@ _E_ROW = '<tg-emoji emoji-id="6010179991944305029">☺️</tg-emoji>'
 
 
 @router.message(Command("players"))
-async def cmd_players(message: Message):
+async def cmd_players(message: Message) -> None:
+    chat_info = f"chat=%d, user=%d" % (message.chat.id, message.from_user.id if message.from_user else 0)
+    log.info("/players requested — %s", chat_info)
+
     status = ServerStatus()
     await status.update_status()
 
     if not status.is_online:
+        log.info("/players result — server offline (%s)", chat_info)
         await message.answer("Server is offline")
         return
 
     s = status.get_status()
     sample = s.players.sample or []
     online, maximum = s.players.online, s.players.max
+
+    log.info(
+        "/players result — %d/%d online, %d in sample (%s)",
+        online, maximum, len(sample),
+        chat_info,
+    )
 
     if not sample:
         await message.answer(
