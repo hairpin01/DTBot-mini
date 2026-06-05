@@ -1,6 +1,7 @@
 from typing import Any
 
 from mcstatus import JavaServer
+from mcstatus.responses import JavaStatusResponse
 
 from .config import Config
 
